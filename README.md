@@ -19,7 +19,7 @@ If you forget the master password, the vault cannot be recovered. There is no re
 
 Open the Pages site, or serve `docs/` with any static file server. On iPhone or iPad, use Share → Add to Home Screen. The layout is sized for iPhone and iPad mini Safari: 16px inputs, 44px controls, and safe-area padding.
 
-The worker URL lives only in `docs/config.js`:
+The installable app is served from `docs/app/` at [https://tonychendds.github.io/vault/app/](https://tonychendds.github.io/vault/app/). `https://tonychendds.github.io/vault/` only redirects there. The worker URL lives only in `docs/app/config.js`:
 
 ```js
 export const SYNC_URL = "https://vault-sync.tonychendds.workers.dev";
@@ -54,7 +54,7 @@ npx wrangler d1 migrations apply vault-sync --remote
 npx wrangler deploy
 ```
 
-If the workers.dev hostname is not `vault-sync.tonychendds.workers.dev`, change `SYNC_URL` in `docs/config.js` and push. That file is the only frontend copy of the URL.
+If the workers.dev hostname is not `vault-sync.tonychendds.workers.dev`, change `SYNC_URL` in `docs/app/config.js` and push. That file is the only frontend copy of the URL.
 
 The worker allows browser calls only from `https://tonychendds.github.io`. It does not log request bodies. There is no account-recovery flow.
 

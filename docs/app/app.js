@@ -1303,9 +1303,9 @@ function bindInstall() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const onVault = location.pathname === "/vault" || location.pathname.startsWith("/vault/");
-  if (!onVault) return;
-  navigator.serviceWorker.register("/vault/sw.js", { scope: "/vault/" }).catch(() => {});
+  const onApp = location.pathname === "/vault/app" || location.pathname.startsWith("/vault/app/");
+  if (!onApp) return;
+  navigator.serviceWorker.register("/vault/app/sw.js", { scope: "/vault/app/" }).catch(() => {});
 }
 
 function bind() {

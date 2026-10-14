@@ -1,5 +1,5 @@
-import { isValidEmail, normalizeEmail } from "../../docs/lib/email.js";
-import { CONFLICT_ERROR, EMPTY_ERROR, conflictingIds, leavesVaultEmpty } from "../../docs/lib/merge.js";
+import { isValidEmail, normalizeEmail } from "../../docs/app/lib/email.js";
+import { CONFLICT_ERROR, EMPTY_ERROR, conflictingIds, leavesVaultEmpty } from "../../docs/app/lib/merge.js";
 
 // Do not log requests, bodies, tokens, passwords, or vault payloads.
 const ALLOWED_ORIGIN = "https://tonychendds.github.io";

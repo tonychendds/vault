@@ -1,29 +1,29 @@
 {
-  "id": "/vault/?app=vault-pwa-2",
+  "id": "/vault/app/",
   "name": "Vault",
   "short_name": "Vault",
   "description": "Zero-knowledge password vault. The master password never leaves this device.",
-  "start_url": "/vault/",
-  "scope": "/vault/",
+  "start_url": "/vault/app/",
+  "scope": "/vault/app/",
   "display": "standalone",
   "background_color": "#12100e",
   "theme_color": "#12100e",
   "lang": "en",
   "icons": [
     {
-      "src": "/vault/icon-192.png",
+      "src": "/vault/app/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/vault/icon-512.png",
+      "src": "/vault/app/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/vault/icon-maskable-512.png",
+      "src": "/vault/app/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

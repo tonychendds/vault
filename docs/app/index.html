@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#12100e" />
+    <meta name="description" content="Zero-knowledge password vault. The master password never leaves this device." />
+    <meta name="robots" content="noindex" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Vault" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; connect-src 'self' https:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    />
+    <title>Vault</title>
+    <link rel="manifest" href="/vault/app/vault-app.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body translate="no">
+    <div class="app-shell">
+      <div class="sticky-stack">
+        <header class="topbar">
+          <div class="brand">
+            <svg class="mark icon" viewBox="0 0 64 64" aria-hidden="true">
+              <circle cx="32" cy="32" r="18" fill="none" stroke="currentColor" stroke-width="3" />
+              <circle cx="32" cy="27" r="4" fill="currentColor" />
+              <path d="M29.2 31h5.6L33 44h-2.2z" fill="currentColor" />
+            </svg>
+            <div>
+              <p class="eyebrow" id="sync-label">
+                <svg id="sync-icon-check" class="status-icon status-check icon" viewBox="0 0 24 24" aria-hidden="true" hidden>
+                  <path d="M5 12.5 9.5 17 19 7" />
+                </svg>
+                <svg id="sync-icon-warn" class="status-icon status-warn icon" viewBox="0 0 24 24" aria-hidden="true" hidden>
+                  <path d="M12 3.5 2.8 20h18.4L12 3.5z" />
+                  <path d="M12 9.5v5" />
+                  <path d="M12 17.5h.01" />
+                </svg>
+                <span id="sync-text">Not signed in</span>
+              </p>
+              <h1>Vault</h1>
+            </div>
+          </div>
+          <div class="top-actions">
+            <button type="button" id="install-button" class="ghost" hidden>Install app</button>
+            <button type="button" id="sync-button" class="ghost" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 0 1-13.7 5.6M4 12a8 8 0 0 1 13.7-5.6M20 5v5h-5M4 19v-5h5" /></svg>
+              Sync
+            </button>
+            <button type="button" id="lock-button" class="ghost" hidden>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2" /><path d="M8 11V8a4 4 0 0 1 8 0v3" /></svg>
+              Lock
+            </button>
+          </div>
+        </header>
+        <div id="banner" class="banner" role="status">
+          Not signed in. This vault stays on this device until you create an account and sync.
+        </div>
+      </div>
+
+      <main>
+        <section id="lock-screen" class="card">
+          <form id="auth-form" novalidate>
+            <div class="segmented" role="tablist" aria-label="Account">
+              <button type="button" id="mode-signin" data-mode="signin" role="tab" aria-selected="true">Sign in</button>
+              <button type="button" id="mode-create" data-mode="create" role="tab" aria-selected="false" aria-label="Create account">Create</button>
+              <button type="button" id="mode-device" data-mode="device" role="tab" aria-selected="false" aria-label="Use on this device only">On device</button>
+            </div>
+            <p id="mode-copy" class="lede">Unlock this device and download the encrypted vault.</p>
+            <div id="recovery-warning" class="warning" hidden>
+              <strong>If you forget this master password, the vault cannot be recovered.</strong>
+              There is no reset. The password never leaves this device, and the server cannot reveal it.
+            </div>
+            <label class="field">
+              Email
+              <input id="email" name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" required />
+            </label>
+            <label class="field">
+              Master password
+              <span class="password-row">
+                <input id="master" name="password" type="password" autocomplete="current-password" minlength="8" required />
+                <button type="button" id="toggle-master" class="reveal" data-reveal="master" aria-label="Show password">
+                  <svg class="icon eye-open" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7S2 12 2 12z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <svg class="icon eye-off" viewBox="0 0 24 24" aria-hidden="true" hidden>
+                    <path d="M3 3 21 21" />
+                    <path d="M10.6 6.1A10.7 10.7 0 0 1 12 6c6.5 0 10 6 10 6a18.5 18.5 0 0 1-3.2 3.8" />
+                    <path d="M6.1 6.7C3.7 8.3 2 12 2 12a18.8 18.8 0 0 0 6.2 5.2" />
+                    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                  </svg>
+                </button>
+              </span>
+            </label>
+            <label class="field" id="confirm-label" hidden>
+              Confirm master password
+              <span class="password-row">
+                <input id="confirm" type="password" autocomplete="new-password" />
+                <button type="button" id="toggle-confirm" class="reveal" data-reveal="confirm" aria-label="Show password">
+                  <svg class="icon eye-open" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7S2 12 2 12z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <svg class="icon eye-off" viewBox="0 0 24 24" aria-hidden="true" hidden>
+                    <path d="M3 3 21 21" />
+                    <path d="M10.6 6.1A10.7 10.7 0 0 1 12 6c6.5 0 10 6 10 6a18.5 18.5 0 0 1-3.2 3.8" />
+                    <path d="M6.1 6.7C3.7 8.3 2 12 2 12a18.8 18.8 0 0 0 6.2 5.2" />
+                    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                  </svg>
+                </button>
+              </span>
+            </label>
+            <p id="form-error" class="form-error" role="alert" hidden></p>
+            <button type="submit" id="submit-button" class="primary">Unlock</button>
+            <p class="fine">On iPhone or iPad, open Share and choose Add to Home Screen.</p>
+          </form>
+        </section>
+
+        <section id="app-screen" hidden>
+          <div class="workspace">
+            <div id="list-pane">
+              <div class="toolbar">
+                <label class="search-label">
+                  <span class="sr-only">Search</span>
+                  <input id="search" type="search" placeholder="Search title, username, or URL" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" />
+                </label>
+                <button type="button" id="new-entry" class="primary">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+                  New
+                </button>
+              </div>
+              <p id="app-message" class="form-error" role="alert" hidden></p>
+              <div id="entry-list" class="entry-list"></div>
+              <div class="tools">
+                <button type="button" id="export-button" class="ghost">Export backup</button>
+                <button type="button" id="import-button" class="ghost">Import backup</button>
+                <input id="import-file" type="file" accept="application/json,.json" hidden />
+                <button type="button" id="enable-sync" class="primary" hidden>Create account and sync</button>
+                <button type="button" id="signout-button" class="ghost" hidden>Sign out</button>
+              </div>
+            </div>
+
+            <div id="editor-pane">
+              <p id="editor-empty" class="empty">Select an entry or create a new one.</p>
+              <form id="entry-form" novalidate hidden>
+                <div class="editor-head">
+                  <h2 id="editor-heading">Entry</h2>
+                  <button type="button" id="close-editor" class="ghost">Close</button>
+                </div>
+                <p id="editor-unreadable" class="warning" hidden>This entry could not be decrypted. You can delete it, and the ciphertext stays unchanged until you do.</p>
+                <label class="field">Title <input id="entry-title" autocomplete="off" autocapitalize="sentences" /></label>
+                <label class="field">Username <input id="entry-username" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" /></label>
+                <label class="field">
+                  Password
+                  <span class="inline-controls">
+                    <input id="entry-password" type="password" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" />
+                    <button type="button" id="toggle-password" class="reveal" data-reveal="entry-password" aria-label="Show password">
+                      <svg class="icon eye-open" viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M2 12s3.8-7 10-7 10 7 10 7-3.8 7-10 7S2 12 2 12z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                      <svg class="icon eye-off" viewBox="0 0 24 24" aria-hidden="true" hidden>
+                        <path d="M3 3 21 21" />
+                        <path d="M10.6 6.1A10.7 10.7 0 0 1 12 6c6.5 0 10 6 10 6a18.5 18.5 0 0 1-3.2 3.8" />
+                        <path d="M6.1 6.7C3.7 8.3 2 12 2 12a18.8 18.8 0 0 0 6.2 5.2" />
+                        <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+                      </svg>
+                    </button>
+                    <button type="button" id="copy-password" class="ghost" data-label="Copy" aria-label="Copy password">
+                      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M4 16V6a2 2 0 0 1 2-2h10" /></svg>
+                      <span class="btn-label">Copy</span>
+                    </button>
+                  </span>
+                </label>
+                <div id="generator" class="generator" hidden>
+                  <h3>Password generator</h3>
+                  <label class="field">
+                    Length
+                    <span class="length-row">
+                      <input id="gen-length" type="range" min="8" max="64" value="20" />
+                      <output id="gen-length-out" for="gen-length">20</output>
+                    </span>
+                  </label>
+                  <div class="checks">
+                    <label class="check"><input id="gen-lower" type="checkbox" checked /> Lowercase</label>
+                    <label class="check"><input id="gen-upper" type="checkbox" checked /> Uppercase</label>
+                    <label class="check"><input id="gen-digit" type="checkbox" checked /> Numbers</label>
+                    <label class="check"><input id="gen-symbol" type="checkbox" checked /> Symbols</label>
+                  </div>
+                  <input id="gen-output" class="secret" readonly />
+                  <p id="gen-error" class="form-error" role="alert" hidden></p>
+                  <div class="row-actions">
+                    <button type="button" id="gen-refresh" class="ghost">Regenerate</button>
+                    <button type="button" id="gen-use" class="primary">Use password</button>
+                    <button type="button" id="gen-copy" class="ghost" data-label="Copy" aria-label="Copy generated password">Copy</button>
+                  </div>
+                </div>
+                <div class="row-actions">
+                  <button type="button" id="open-generator" class="ghost">Generate</button>
+                  <button type="button" id="copy-username" class="ghost" data-label="Copy username">Copy username</button>
+                </div>
+                <label class="field">URL <input id="entry-url" type="url" inputmode="url" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" /></label>
+                <button type="button" id="open-url" class="ghost" hidden>Open URL</button>
+                <label class="field">Notes <textarea id="entry-notes" rows="5" autocomplete="off" spellcheck="true"></textarea></label>
+                <p id="entry-error" class="form-error" role="alert" hidden></p>
+                <div class="row-actions">
+                  <button type="submit" id="save-entry" class="primary">Save</button>
+                  <button type="button" id="delete-entry" class="danger">Delete</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <noscript>Vault needs JavaScript so your passwords can be encrypted on this device.</noscript>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>

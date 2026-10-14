@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
-import { PBKDF2_ITERATIONS, decryptJson, deriveKeys, encryptJson } from "../docs/lib/crypto.js";
-import { normalizeEmail } from "../docs/lib/email.js";
+import { PBKDF2_ITERATIONS, decryptJson, deriveKeys, encryptJson } from "../docs/app/lib/crypto.js";
+import { normalizeEmail } from "../docs/app/lib/email.js";
 import {
   CONFLICT_ERROR,
   EMPTY_ERROR,
@@ -12,9 +12,9 @@ import {
   mergeEntries,
   planSync,
   uploadPlan,
-} from "../docs/lib/merge.js";
-import { generatePassword } from "../docs/lib/password.js";
-import { buildBackup, parseBackup } from "../docs/lib/backup.js";
+} from "../docs/app/lib/merge.js";
+import { generatePassword } from "../docs/app/lib/password.js";
+import { buildBackup, parseBackup } from "../docs/app/lib/backup.js";
 
 const root = new URL("../", import.meta.url);
 
@@ -134,10 +134,11 @@ test("backup file keeps ciphertext only", () => {
 test("repo wiring stays free of secrets and recovery", () => {
   const worker = readFileSync(new URL("worker/src/index.ts", root), "utf8");
   const toml = readFileSync(new URL("worker/wrangler.toml", root), "utf8");
-  const config = readFileSync(new URL("docs/config.js", root), "utf8");
-  const app = readFileSync(new URL("docs/app.js", root), "utf8");
-  const html = readFileSync(new URL("docs/index.html", root), "utf8");
-  const css = readFileSync(new URL("docs/styles.css", root), "utf8");
+  const config = readFileSync(new URL("docs/app/config.js", root), "utf8");
+  const app = readFileSync(new URL("docs/app/app.js", root), "utf8");
+  const html = readFileSync(new URL("docs/app/index.html", root), "utf8");
+  const rootHtml = readFileSync(new URL("docs/index.html", root), "utf8");
+  const css = readFileSync(new URL("docs/app/styles.css", root), "utf8");
   const sql = readFileSync(new URL("worker/migrations/0001_init.sql", root), "utf8");
   assert.equal(/recovery_email|reset-request|password_resets|RESET_RELAY/i.test(worker), false);
   assert.equal(worker.includes("console."), false);
@@ -145,29 +146,36 @@ test("repo wiring stays free of secrets and recovery", () => {
   assert.match(toml, /name = "vault-sync"/);
   assert.match(toml, /binding = "DB"/);
   assert.match(toml, /database_id = "[0-9a-f-]{36}"/);
-  const sw = readFileSync(new URL("docs/sw.js", root), "utf8");
-  assert.match(sw, /vault-shell-v4/);
+  const sw = readFileSync(new URL("docs/app/sw.js", root), "utf8");
+  const oldSw = readFileSync(new URL("docs/sw.js", root), "utf8");
+  assert.match(sw, /vault-app-v1/);
+  assert.match(oldSw, /registration\.unregister/);
+  assert.match(oldSw, /caches\.delete/);
+  assert.equal(rootHtml.includes("manifest"), false);
+  assert.match(rootHtml, /url=\.\/app\//);
+  assert.match(rootHtml, /location\.replace\("\.\/app\/"\)/);
   assert.match(worker, /No account exists for that email/);
   assert.match(app, /Use Create to make one/);
   assert.match(html, /aria-label="Show password"/);
   assert.equal(html.includes("manifest.json"), false);
-  assert.match(html, /href="\/vault\/manifest-v2\.webmanifest"/);
+  assert.match(html, /href="\/vault\/app\/vault-app\.webmanifest"/);
   assert.match(html, /id="install-button"/);
   assert.match(html, /Install app/);
   assert.match(app, /beforeinstallprompt/);
-  assert.match(app, /register\("\/vault\/sw\.js", \{ scope: "\/vault\/" \}\)/);
-  const manifest = JSON.parse(readFileSync(new URL("docs/manifest-v2.webmanifest", root), "utf8"));
-  assert.equal(manifest.id, "/vault/?app=vault-pwa-2");
-  assert.equal(manifest.start_url, "/vault/");
-  assert.equal(manifest.scope, "/vault/");
+  assert.match(app, /register\("\/vault\/app\/sw\.js", \{ scope: "\/vault\/app\/" \}\)/);
+  const manifest = JSON.parse(readFileSync(new URL("docs/app/vault-app.webmanifest", root), "utf8"));
+  assert.equal(manifest.id, "/vault/app/");
+  assert.equal(manifest.start_url, "/vault/app/");
+  assert.equal(manifest.scope, "/vault/app/");
   assert.equal(manifest.display, "standalone");
-  assert.equal(manifest.icons.some((icon) => icon.sizes === "192x192" && icon.type === "image/png" && icon.src === "/vault/icon-192.png"), true);
+  assert.equal(manifest.icons.some((icon) => icon.sizes === "192x192" && icon.type === "image/png" && icon.src === "/vault/app/icon-192.png"), true);
   assert.equal(manifest.icons.some((icon) => icon.sizes === "512x512" && icon.type === "image/png" && icon.purpose === "any"), true);
-  assert.equal(manifest.icons.some((icon) => icon.purpose === "maskable" && icon.type === "image/png" && icon.src === "/vault/icon-maskable-512.png"), true);
+  assert.equal(manifest.icons.some((icon) => icon.purpose === "maskable" && icon.type === "image/png" && icon.src === "/vault/app/icon-maskable-512.png"), true);
   assert.match(sw, /SHELL_PATHS/);
   assert.equal(sw.includes("manifest.json"), false);
   assert.equal(sw.includes('"manifest.webmanifest"'), false);
-  assert.match(sw, /manifest-v2\.webmanifest/);
+  assert.match(sw, /vault-app\.webmanifest/);
+  assert.match(sw, /\/vault\/app\//);
   assert.match(sw, /caches\.delete/);
   assert.match(sw, /clients\.claim/);
   assert.match(config, /https:\/\/vault-sync\.tonychendds\.workers\.dev/);
