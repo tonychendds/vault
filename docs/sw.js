@@ -1,4 +1,4 @@
-const CACHE = "vault-shell-v3";
+const CACHE = "vault-shell-v4";
 
 const ASSETS = [
   "./",
@@ -6,7 +6,7 @@ const ASSETS = [
   "styles.css",
   "app.js",
   "config.js",
-  "manifest.webmanifest",
+  "manifest-v2.webmanifest",
   "icon.svg",
   "icon-192.png",
   "icon-512.png",

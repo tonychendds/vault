@@ -1269,6 +1269,38 @@ async function signOut() {
   }
 }
 
+function bindInstall() {
+  const installButton = document.getElementById("install-button");
+  let installPrompt = null;
+  const standalone = window.matchMedia("(display-mode: standalone)").matches;
+  if (standalone) {
+    installButton.hidden = true;
+    return;
+  }
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    installPrompt = event;
+    installButton.hidden = false;
+  });
+  installButton.addEventListener("click", async () => {
+    const prompt = installPrompt;
+    if (!prompt) return;
+    installPrompt = null;
+    installButton.hidden = true;
+    try {
+      await prompt.prompt();
+      await prompt.userChoice;
+    } catch {
+      installPrompt = prompt;
+      installButton.hidden = false;
+    }
+  });
+  window.addEventListener("appinstalled", () => {
+    installPrompt = null;
+    installButton.hidden = true;
+  });
+}
+
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
   const onVault = location.pathname === "/vault" || location.pathname.startsWith("/vault/");
@@ -1277,6 +1309,7 @@ function registerServiceWorker() {
 }
 
 function bind() {
+  bindInstall();
   document.getElementById("auth-form").addEventListener("submit", (event) => {
     void onAuthSubmit(event);
   });

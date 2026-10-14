@@ -17,7 +17,7 @@
       content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; manifest-src 'self'; worker-src 'self'; connect-src 'self' https:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
     />
     <title>Vault</title>
-    <link rel="manifest" href="/vault/manifest.webmanifest" />
+    <link rel="manifest" href="/vault/manifest-v2.webmanifest" />
     <link rel="icon" href="icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="apple-touch-icon.png" />
     <link rel="stylesheet" href="styles.css" />
@@ -48,6 +48,7 @@
             </div>
           </div>
           <div class="top-actions">
+            <button type="button" id="install-button" class="ghost" hidden>Install app</button>
             <button type="button" id="sync-button" class="ghost" hidden>
               <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 0 1-13.7 5.6M4 12a8 8 0 0 1 13.7-5.6M20 5v5h-5M4 19v-5h5" /></svg>
               Sync

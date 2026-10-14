@@ -1,5 +1,5 @@
 {
-  "id": "/vault/",
+  "id": "/vault/?app=vault-pwa-2",
   "name": "Vault",
   "short_name": "Vault",
   "description": "Zero-knowledge password vault. The master password never leaves this device.",
