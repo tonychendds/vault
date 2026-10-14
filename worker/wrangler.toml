@@ -8,5 +8,5 @@ workers_dev = true
 [[d1_databases]]
 binding = "DB"
 database_name = "vault-sync"
-database_id = "REPLACE_ME"
+database_id = "d5225218-c13c-4763-881e-baedf798cbbd"
 migrations_dir = "migrations"
