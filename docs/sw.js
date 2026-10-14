@@ -1,4 +1,4 @@
-const CACHE = "vault-shell-v2";
+const CACHE = "vault-shell-v3";
 
 const ASSETS = [
   "./",
@@ -6,10 +6,11 @@ const ASSETS = [
   "styles.css",
   "app.js",
   "config.js",
-  "manifest.json",
+  "manifest.webmanifest",
   "icon.svg",
   "icon-192.png",
   "icon-512.png",
+  "icon-maskable-512.png",
   "apple-touch-icon.png",
   "lib/email.js",
   "lib/crypto.js",
@@ -17,6 +18,8 @@ const ASSETS = [
   "lib/password.js",
   "lib/backup.js",
 ];
+
+const SHELL_PATHS = new Set(["/vault", "/vault/", "/vault/index.html"]);
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -31,6 +34,13 @@ self.addEventListener("install", (event) => {
           }
         }),
       );
+      const shell =
+        (await cache.match(new URL("index.html", self.registration.scope))) ||
+        (await cache.match(new URL("./", self.registration.scope)));
+      if (shell) {
+        await cache.put(new URL("./", self.registration.scope), shell.clone());
+        await cache.put(new URL("index.html", self.registration.scope), shell.clone());
+      }
       await self.skipWaiting();
     }),
   );
@@ -52,18 +62,38 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
   const scopePath = new URL(self.registration.scope).pathname;
   if (!url.pathname.startsWith(scopePath)) return;
-  event.respondWith(networkFirst(request));
+  event.respondWith(networkFirst(request, url));
 });
 
-async function networkFirst(request) {
+async function networkFirst(request, url) {
   const cache = await caches.open(CACHE);
   try {
     const fresh = await fetch(request);
-    if (fresh.ok) await cache.put(request, fresh.clone());
-    return fresh;
+    if (fresh.ok) {
+      await cache.put(new Request(url.href), fresh.clone());
+      return fresh;
+    }
+    if (request.mode !== "navigate") return fresh;
   } catch {
-    const cached = await cache.match(request);
-    if (cached) return cached;
-    throw new Error("offline");
+    /* Offline or blocked. Serve the cached shell for the start URL. */
   }
+  const cached = await cache.match(url.href, { ignoreSearch: true });
+  if (cached) return cached;
+  if (request.mode === "navigate" && SHELL_PATHS.has(url.pathname)) {
+    const shell = await shellResponse(cache);
+    if (shell) return shell;
+  }
+  return new Response("Offline", {
+    status: 504,
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
+  });
+}
+
+async function shellResponse(cache) {
+  return (
+    (await cache.match(new URL("./", self.registration.scope))) ||
+    (await cache.match(new URL("index.html", self.registration.scope))) ||
+    (await cache.match(new URL("/vault/", self.location.origin))) ||
+    (await cache.match(new URL("/vault/index.html", self.location.origin)))
+  );
 }

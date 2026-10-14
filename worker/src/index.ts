@@ -130,7 +130,7 @@ async function login(request: Request, env: Env): Promise<Response> {
     .first<UserRow>();
   if (!user) {
     await pbkdf2(credentials.authHash, crypto.getRandomValues(new Uint8Array(16)));
-    return json({ error: "Email or master password does not match." }, 401);
+    return json({ error: "No account exists for that email." }, 404);
   }
   if (!(await verifyAuth(credentials.authHash, user.password_salt, user.password_hash))) {
     return json({ error: "Email or master password does not match." }, 401);

@@ -182,6 +182,39 @@ function enqueue(task) {
   return run;
 }
 
+function setIconHidden(icon, hidden) {
+  if (!icon) return;
+  if (hidden) icon.setAttribute("hidden", "");
+  else icon.removeAttribute("hidden");
+}
+
+function setRevealed(button, input, revealed) {
+  input.type = revealed ? "text" : "password";
+  button.setAttribute("aria-label", revealed ? "Hide password" : "Show password");
+  setIconHidden(button.querySelector(".eye-open"), revealed);
+  setIconHidden(button.querySelector(".eye-off"), !revealed);
+}
+
+function hidePassword(inputId) {
+  const input = document.getElementById(inputId);
+  const button = document.querySelector(`[data-reveal="${inputId}"]`);
+  if (input && button) setRevealed(button, input, false);
+}
+
+function hidePasswords() {
+  hidePassword("master");
+  hidePassword("confirm");
+  hidePassword("entry-password");
+}
+
+function signInMessage(error) {
+  const message = error instanceof Error ? error.message : "Could not unlock.";
+  if (state.mode !== "signin") return message;
+  if (!/no account exists|account does not exist|account doesn't exist/i.test(message)) return message;
+  if (/use create/i.test(message)) return message;
+  return `${message.replace(/[. ]*$/, "")}. Use Create to make one.`;
+}
+
 function setText(id, message, kind = "error") {
   const node = document.getElementById(id);
   node.textContent = message || "";
@@ -267,6 +300,8 @@ function assertSyncUrl() {
 
 async function onAuthSubmit(event) {
   event.preventDefault();
+  hidePassword("master");
+  hidePassword("confirm");
   if (state.busy) return;
   const mode = state.mode;
   const email = normalizeEmail(emailInput.value);
@@ -313,7 +348,7 @@ async function onAuthSubmit(event) {
   } catch (error) {
     secrets.encKey = null;
     secrets.authHash = "";
-    setText("form-error", error instanceof Error ? error.message : "Could not unlock.");
+    setText("form-error", signInMessage(error));
   } finally {
     state.busy = false;
     submitButton.disabled = false;
@@ -428,6 +463,7 @@ function lockVault() {
   window.clearTimeout(hideTimer);
   window.clearInterval(syncTimer);
   window.clearTimeout(autoSyncTimer);
+  hidePasswords();
   if (!secrets.encKey) {
     setMode("signin");
     return;
@@ -605,8 +641,7 @@ function fillForm(item) {
   titleInput.value = item.title || "";
   usernameInput.value = item.username || "";
   passwordInput.value = item.password || "";
-  passwordInput.type = "password";
-  document.getElementById("toggle-password").textContent = "Show";
+  hidePassword("entry-password");
   urlInput.value = item.url || "";
   notesInput.value = item.notes || "";
   generator.hidden = true;
@@ -1236,8 +1271,9 @@ async function signOut() {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return;
-  const workerUrl = new URL("sw.js", import.meta.url);
-  navigator.serviceWorker.register(workerUrl).catch(() => {});
+  const onVault = location.pathname === "/vault" || location.pathname.startsWith("/vault/");
+  if (!onVault) return;
+  navigator.serviceWorker.register("/vault/sw.js", { scope: "/vault/" }).catch(() => {});
 }
 
 function bind() {
@@ -1258,17 +1294,26 @@ function bind() {
   searchInput.addEventListener("input", () => renderList());
   entryForm.addEventListener("submit", (event) => {
     event.preventDefault();
+    hidePassword("entry-password");
     void saveEntry();
   });
   document.getElementById("close-editor").addEventListener("click", () => closeEditor());
   deleteButton.addEventListener("click", () => {
     void deleteEntry();
   });
-  document.getElementById("toggle-password").addEventListener("click", () => {
-    const hidden = passwordInput.type === "password";
-    passwordInput.type = hidden ? "text" : "password";
-    document.getElementById("toggle-password").textContent = hidden ? "Hide" : "Show";
-  });
+  for (const button of document.querySelectorAll("[data-reveal]")) {
+    const input = document.getElementById(button.dataset.reveal);
+    button.addEventListener("pointerdown", (event) => {
+      event.preventDefault();
+    });
+    button.addEventListener("click", () => {
+      const start = input.selectionStart;
+      const end = input.selectionEnd;
+      setRevealed(button, input, input.type === "password");
+      input.focus();
+      if (typeof start === "number" && typeof end === "number") input.setSelectionRange(start, end);
+    });
+  }
   document.getElementById("copy-password").addEventListener("click", () => {
     void copyText(passwordInput.value, document.getElementById("copy-password"));
   });

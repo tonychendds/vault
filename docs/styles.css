@@ -297,6 +297,36 @@ input:-webkit-autofill {
 
 .inline-controls input { min-width: 0; flex: 1 1 140px; }
 
+.password-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.password-row > input {
+  width: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+button.reveal {
+  width: 48px;
+  min-width: 48px;
+  height: 48px;
+  min-height: 48px;
+  padding: 0;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  color: var(--text);
+  background: rgba(224, 181, 106, 0.1);
+}
+
+button.reveal svg {
+  width: 24px;
+  height: 24px;
+}
+
 .toolbar { margin-bottom: 8px; }
 
 .search-label { flex: 1; }
