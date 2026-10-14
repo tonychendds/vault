@@ -1,0 +1,12 @@
+name = "vault-sync"
+main = "src/index.ts"
+compatibility_date = "2026-10-14"
+workers_dev = true
+
+# Create the database once, then paste its id here:
+#   npx wrangler d1 create vault-sync
+[[d1_databases]]
+binding = "DB"
+database_name = "vault-sync"
+database_id = "REPLACE_ME"
+migrations_dir = "migrations"
