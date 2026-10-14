@@ -60,7 +60,9 @@ The worker allows browser calls only from `https://tonychendds.github.io`. It do
 
 ## GitHub Pages
 
-Pages serves the `docs/` folder on `main` at [https://tonychendds.github.io/vault/](https://tonychendds.github.io/vault/). `docs/.nojekyll` is present so GitHub does not run Jekyll.
+The site is the `docs/` folder on `main`: [https://tonychendds.github.io/vault/](https://tonychendds.github.io/vault/). `docs/.nojekyll` is present so GitHub does not run Jekyll.
+
+In the repository settings, open Pages, choose **Deploy from a branch**, select `main` and `/docs`, and save. The first publish can take a minute. A "Site not found" page means that setting is not on yet.
 
 ## Tests
 
