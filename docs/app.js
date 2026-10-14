@@ -8,6 +8,7 @@ import { isValidEmail, normalizeEmail } from "./lib/email.js";
 const IDLE_MS = 5 * 60 * 1000;
 const HIDE_MS = 15 * 1000;
 const CLIPBOARD_MS = 30 * 1000;
+const SYNC_INTERVAL_MS = 60 * 1000;
 const SESSION_KEY = "vault.session.v1";
 const SIGNED_OUT = "Not signed in. This vault stays on this device until you create an account and sync.";
 const LOCAL_ONLY = "Local only. The sync server could not be reached, so changes stay on this device.";
@@ -34,12 +35,17 @@ const state = {
   editorId: null,
   editorIsNew: false,
   deleteArmed: false,
+  syncing: false,
+  pullCompleted: false,
+  confirmEmptyPassword: false,
 };
 
 let epoch = 0;
 let queue = Promise.resolve();
 let idleTimer = 0;
 let hideTimer = 0;
+let syncTimer = 0;
+let autoSyncTimer = 0;
 let clipboardTimer = 0;
 let clipboardValue = "";
 let clipboardButton = null;
@@ -50,7 +56,9 @@ const masterInput = document.getElementById("master");
 const confirmInput = document.getElementById("confirm");
 const submitButton = document.getElementById("submit-button");
 const bannerEl = document.getElementById("banner");
-const syncLabel = document.getElementById("sync-label");
+const syncText = document.getElementById("sync-text");
+const syncIconCheck = document.getElementById("sync-icon-check");
+const syncIconWarn = document.getElementById("sync-icon-warn");
 const lockButton = document.getElementById("lock-button");
 const syncButton = document.getElementById("sync-button");
 const entryForm = document.getElementById("entry-form");
@@ -174,34 +182,49 @@ function enqueue(task) {
   return run;
 }
 
-function setText(id, message) {
+function setText(id, message, kind = "error") {
   const node = document.getElementById(id);
   node.textContent = message || "";
   node.hidden = !message;
+  node.classList.toggle("form-success", !!message && kind === "success");
+  node.classList.toggle("form-error", !message || kind !== "success");
 }
 
 function renderChrome() {
   const unlocked = !!secrets.encKey;
   const dirty = unlocked ? state.items.some((item) => item.dirty) : hasDirty(session.email);
+  const waitingForPull = unlocked && !!session.token && (state.syncing || !state.pullCompleted) && !session.lastSyncError;
   let banner = "";
   let label = "Not signed in";
+  let icon = "none";
   if (!session.token) {
     banner = SIGNED_OUT;
     label = "Not signed in";
+  } else if (waitingForPull) {
+    label = "Syncing…";
+    if (dirty) banner = UNSYNCED;
   } else if (session.lastSyncError) {
     banner = dirty ? LOCAL_ONLY_DIRTY : LOCAL_ONLY;
     label = "Local only";
+    icon = "warn";
   } else if (dirty) {
     banner = UNSYNCED;
     label = "Unsynced";
+    icon = "warn";
+  } else if (unlocked && state.pullCompleted) {
+    label = "Synced";
+    icon = "check";
   } else {
-    label = unlocked ? "Synced" : "Signed in";
+    label = "Signed in";
   }
   bannerEl.textContent = banner;
   bannerEl.hidden = !banner;
-  syncLabel.textContent = label;
+  syncText.textContent = label;
+  syncIconCheck.hidden = icon !== "check";
+  syncIconWarn.hidden = icon !== "warn";
   lockButton.hidden = !unlocked;
   syncButton.hidden = !unlocked || !session.token;
+  syncButton.disabled = false;
   document.getElementById("enable-sync").hidden = !unlocked || !!session.token;
   document.getElementById("signout-button").hidden = !unlocked || !session.token;
 }
@@ -265,22 +288,28 @@ async function onAuthSubmit(event) {
   submitButton.disabled = true;
   submitButton.textContent = "Deriving keys…";
   await yieldToPaint();
+  let created = false;
   try {
     const keys = await deriveKeys(email, password);
     if (mode === "device") {
       session.email = email;
       session.token = null;
       session.lastSyncError = false;
+      state.pullCompleted = false;
       saveSession();
       await openVault(keys);
       return;
     }
-    if (mode === "create") await registerOrFail(email, keys.authHash);
-    else await loginOrOffline(email, keys.authHash);
+    if (mode === "create") {
+      await registerOrFail(email, keys.authHash);
+      created = true;
+    } else await loginOrOffline(email, keys.authHash);
     session.email = email;
+    state.pullCompleted = false;
     saveSession();
     await openVault(keys);
-    if (session.token) await requestSync();
+    if (session.token && secrets.encKey) await requestSync();
+    if (created && secrets.encKey) setText("app-message", "Account created.", "success");
   } catch (error) {
     secrets.encKey = null;
     secrets.authHash = "";
@@ -377,15 +406,32 @@ function showApp() {
   document.getElementById("app-screen").hidden = false;
   document.body.classList.add("unlocked");
   armIdle();
+  armSyncTimer();
+  const waiting = !!session.token && !state.pullCompleted;
+  if (waiting) {
+    state.syncing = true;
+    listEl.replaceChildren();
+    const pending = document.createElement("p");
+    pending.className = "empty";
+    pending.id = "sync-hold";
+    pending.textContent = "Syncing…";
+    listEl.append(pending);
+  } else {
+    renderList();
+  }
   renderChrome();
-  renderList();
-  searchInput.focus();
+  if (!waiting && window.matchMedia("(min-width: 900px) and (pointer: fine)").matches) searchInput.focus();
 }
 
 function lockVault() {
   window.clearTimeout(idleTimer);
   window.clearTimeout(hideTimer);
-  if (!secrets.encKey) return;
+  window.clearInterval(syncTimer);
+  window.clearTimeout(autoSyncTimer);
+  if (!secrets.encKey) {
+    setMode("signin");
+    return;
+  }
   epoch += 1;
   secrets.encKey = null;
   secrets.authHash = "";
@@ -393,6 +439,9 @@ function lockVault() {
   state.items = [];
   state.editorId = null;
   state.editorIsNew = false;
+  state.syncing = false;
+  state.pullCompleted = false;
+  state.confirmEmptyPassword = false;
   clearEntryForm();
   searchInput.value = "";
   genOutput.value = "";
@@ -404,6 +453,7 @@ function lockVault() {
   editorEmpty.hidden = false;
   masterInput.value = "";
   confirmInput.value = "";
+  setMode("signin");
   renderChrome();
   masterInput.focus();
 }
@@ -412,6 +462,22 @@ function armIdle() {
   window.clearTimeout(idleTimer);
   if (!secrets.encKey) return;
   idleTimer = window.setTimeout(() => lockVault(), IDLE_MS);
+}
+
+function armSyncTimer() {
+  window.clearInterval(syncTimer);
+  if (!secrets.encKey || !session.token) return;
+  syncTimer = window.setInterval(() => {
+    if (secrets.encKey && session.token && document.visibilityState === "visible") void requestSync();
+  }, SYNC_INTERVAL_MS);
+}
+
+function scheduleAutoSync() {
+  if (!secrets.encKey || !session.token) return;
+  window.clearTimeout(autoSyncTimer);
+  autoSyncTimer = window.setTimeout(() => {
+    if (secrets.encKey && session.token) void requestSync();
+  }, 400);
 }
 
 function scheduleHideLock() {
@@ -562,6 +628,7 @@ function openEditor(id) {
   state.editorId = id;
   state.editorIsNew = false;
   state.deleteArmed = false;
+  state.confirmEmptyPassword = false;
   window.clearTimeout(deleteTimer);
   deleteButton.textContent = "Delete";
   fillForm(item);
@@ -579,6 +646,7 @@ function newEntry() {
   state.editorId = crypto.randomUUID();
   state.editorIsNew = true;
   state.deleteArmed = false;
+  state.confirmEmptyPassword = false;
   window.clearTimeout(deleteTimer);
   deleteButton.textContent = "Delete";
   fillForm(blankPlain());
@@ -655,6 +723,12 @@ async function saveEntryInner() {
     setText("entry-error", "Enter a title.");
     return false;
   }
+  if (!draft.password && !state.confirmEmptyPassword) {
+    state.confirmEmptyPassword = true;
+    setText("entry-error", "This entry has no password. Save again to keep it empty.");
+    return false;
+  }
+  state.confirmEmptyPassword = false;
   if (draft.title.length > 200 || draft.username.length > 320 || draft.password.length > 1000 || draft.url.length > 2000 || draft.notes.length > 5000) {
     setText("entry-error", "One of the fields is too long.");
     return false;
@@ -756,6 +830,14 @@ function fillGenerator() {
   } catch (error) {
     genOutput.value = "";
     setText("gen-error", error instanceof Error ? error.message : "Could not generate a password.");
+  }
+}
+
+function applyGeneratedPassword() {
+  fillGenerator();
+  if (genOutput.value) {
+    passwordInput.value = genOutput.value;
+    state.confirmEmptyPassword = false;
   }
 }
 
@@ -881,15 +963,21 @@ function requestSync() {
 
 async function syncNow() {
   if (!session.token || !secrets.encKey) {
+    state.syncing = false;
     renderChrome();
+    if (secrets.encKey) renderList();
     return;
   }
   const ticket = epoch;
-  syncButton.disabled = true;
+  state.syncing = true;
+  syncButton.disabled = false;
+  syncButton.setAttribute("aria-busy", "true");
+  renderChrome();
   try {
     let remote;
     try {
       remote = await pull();
+      state.pullCompleted = true;
     } catch (error) {
       if (!stillOpen(ticket)) return;
       if (error && error.status === 401) {
@@ -943,6 +1031,7 @@ async function syncNow() {
       if (result.status === 409) {
         try {
           remote = await pull();
+          state.pullCompleted = true;
         } catch (error) {
           if (!stillOpen(ticket)) return;
           if (error && error.status === 401) {
@@ -1005,6 +1094,14 @@ async function syncNow() {
     setText("app-message", "Sync did not finish.");
   } finally {
     syncButton.disabled = false;
+    syncButton.setAttribute("aria-busy", "false");
+    if (ticket === epoch) state.syncing = false;
+    if (stillOpen(ticket)) {
+      renderList();
+      renderChrome();
+    } else {
+      renderChrome();
+    }
   }
 }
 
@@ -1100,9 +1197,11 @@ async function enableSync() {
     return;
   }
   setText("app-message", "Creating the account…");
+  let created = false;
   try {
     try {
       await registerOrFail(session.email, secrets.authHash);
+      created = true;
     } catch (error) {
       if (!error || error.status !== 409) throw error;
       const result = await postAuth("/auth/login", session.email, secrets.authHash, 200);
@@ -1110,10 +1209,12 @@ async function enableSync() {
       session.lastSyncError = false;
     }
     saveSession();
+    state.pullCompleted = false;
+    state.syncing = true;
     renderChrome();
-    setText("app-message", "");
     await requestSync();
-    if (session.token && !session.lastSyncError) setText("app-message", "Signed in. The encrypted vault can sync.");
+    if (created && secrets.encKey) setText("app-message", "Account created.", "success");
+    else if (session.token && secrets.encKey && !session.lastSyncError) setText("app-message", "Signed in. The encrypted vault can sync.", "success");
   } catch (error) {
     setText("app-message", error instanceof Error ? error.message : "Account was not created.");
   }
@@ -1175,14 +1276,17 @@ function bind() {
     void copyText(usernameInput.value, document.getElementById("copy-username"));
   });
   document.getElementById("open-generator").addEventListener("click", () => {
-    generator.hidden = !generator.hidden;
-    if (!generator.hidden) fillGenerator();
+    generator.hidden = false;
+    applyGeneratedPassword();
   });
-  genLength.addEventListener("input", () => fillGenerator());
+  genLength.addEventListener("input", () => applyGeneratedPassword());
   for (const id of ["gen-lower", "gen-upper", "gen-digit", "gen-symbol"]) {
-    document.getElementById(id).addEventListener("change", () => fillGenerator());
+    document.getElementById(id).addEventListener("change", () => applyGeneratedPassword());
   }
-  document.getElementById("gen-refresh").addEventListener("click", () => fillGenerator());
+  document.getElementById("gen-refresh").addEventListener("click", () => applyGeneratedPassword());
+  passwordInput.addEventListener("input", () => {
+    state.confirmEmptyPassword = false;
+  });
   document.getElementById("gen-use").addEventListener("click", () => {
     if (genOutput.value) passwordInput.value = genOutput.value;
   });
@@ -1223,7 +1327,16 @@ function bind() {
     else {
       window.clearTimeout(hideTimer);
       noteActivity();
+      scheduleAutoSync();
     }
+  });
+  window.addEventListener("focus", () => {
+    if (document.visibilityState === "hidden") return;
+    noteActivity();
+    scheduleAutoSync();
+  });
+  window.addEventListener("pageshow", () => {
+    if (!secrets.encKey) setMode("signin");
   });
 }
 

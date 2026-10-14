@@ -100,6 +100,15 @@ a:focus-visible {
 
 button:disabled { opacity: 0.6; }
 
+#sync-button,
+#sync-button:disabled,
+#sync-button[aria-busy="true"] {
+  opacity: 1;
+  border-color: var(--brass);
+  color: var(--text);
+  background: rgba(224, 181, 106, 0.16);
+}
+
 .app-shell {
   width: min(1040px, 100%);
   margin: 0 auto;
@@ -146,11 +155,27 @@ button:disabled { opacity: 0.6; }
 .eyebrow, h1, h2, h3, p { margin: 0; }
 
 .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   color: var(--brass);
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
+
+.status-icon {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.status-check { color: #b7d3a8; }
+.status-warn { color: #ffb4a2; }
 
 h1, h2, h3 {
   font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
@@ -252,6 +277,7 @@ input:-webkit-autofill {
 }
 
 .form-error { color: var(--danger); margin: 0 0 12px; }
+.form-success { color: #b7d3a8; margin: 0 0 12px; }
 
 .fine { font-size: 14px; margin-top: 12px; }
 

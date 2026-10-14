@@ -1,4 +1,4 @@
-const CACHE = "vault-shell-v1";
+const CACHE = "vault-shell-v2";
 
 const ASSETS = [
   "./",

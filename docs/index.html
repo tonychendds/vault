@@ -33,7 +33,17 @@
               <path d="M29.2 31h5.6L33 44h-2.2z" fill="currentColor" />
             </svg>
             <div>
-              <p class="eyebrow" id="sync-label">Not signed in</p>
+              <p class="eyebrow" id="sync-label">
+                <svg id="sync-icon-check" class="status-icon status-check icon" viewBox="0 0 24 24" aria-hidden="true" hidden>
+                  <path d="M5 12.5 9.5 17 19 7" />
+                </svg>
+                <svg id="sync-icon-warn" class="status-icon status-warn icon" viewBox="0 0 24 24" aria-hidden="true" hidden>
+                  <path d="M12 3.5 2.8 20h18.4L12 3.5z" />
+                  <path d="M12 9.5v5" />
+                  <path d="M12 17.5h.01" />
+                </svg>
+                <span id="sync-text">Not signed in</span>
+              </p>
               <h1>Vault</h1>
             </div>
           </div>
@@ -123,7 +133,7 @@
                   <span class="inline-controls">
                     <input id="entry-password" type="password" autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" />
                     <button type="button" id="toggle-password" class="ghost" data-label="Show">Show</button>
-                    <button type="button" id="copy-password" class="ghost" data-label="Copy">
+                    <button type="button" id="copy-password" class="ghost" data-label="Copy" aria-label="Copy password">
                       <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M4 16V6a2 2 0 0 1 2-2h10" /></svg>
                       <span class="btn-label">Copy</span>
                     </button>
@@ -149,7 +159,7 @@
                   <div class="row-actions">
                     <button type="button" id="gen-refresh" class="ghost">Regenerate</button>
                     <button type="button" id="gen-use" class="primary">Use password</button>
-                    <button type="button" id="gen-copy" class="ghost" data-label="Copy">Copy</button>
+                    <button type="button" id="gen-copy" class="ghost" data-label="Copy" aria-label="Copy generated password">Copy</button>
                   </div>
                 </div>
                 <div class="row-actions">
