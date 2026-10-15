@@ -1,4 +1,4 @@
-/* Replaces the old /vault/ service worker. It drops that registration and its caches. */
+/* Only deletes caches named vault-* (never other apps on this shared origin). Replaces the old /vault/ service worker. It drops that registration and its caches. */
 self.addEventListener("install", (event) => {
   event.waitUntil(self.skipWaiting());
 });
@@ -7,7 +7,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.filter((key) => !key.startsWith("vault-app-")).map((key) => caches.delete(key)));
+      await Promise.all(keys.filter((key) => key.startsWith("vault-") && !key.startsWith("vault-app-")).map((key) => caches.delete(key)));
       await self.registration.unregister();
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       await Promise.all(windows.map(async (client) => {

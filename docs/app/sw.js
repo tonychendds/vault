@@ -1,4 +1,4 @@
-const CACHE = "vault-app-v2";
+const CACHE = "vault-app-v3";
 
 const ASSETS = [
   "./",
@@ -46,11 +46,12 @@ self.addEventListener("install", (event) => {
   );
 });
 
+/* Only delete our own old caches: other apps share this origin. */
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith("vault-") && key !== CACHE).map((key) => caches.delete(key))))
       .then(() => self.clients.claim()),
   );
 });
