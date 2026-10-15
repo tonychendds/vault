@@ -2,7 +2,9 @@ import { isValidEmail, normalizeEmail } from "../../docs/app/lib/email.js";
 import { CONFLICT_ERROR, EMPTY_ERROR, conflictingIds, leavesVaultEmpty } from "../../docs/app/lib/merge.js";
 
 // Do not log requests, bodies, tokens, passwords, or vault payloads.
-const ALLOWED_ORIGIN = "https://tonychendds.github.io";
+// Exact-match origins only (no wildcard *.pages.dev preview subdomains).
+const ALLOWED_ORIGINS = new Set(["https://tonychendds.github.io", "https://tonychen-vault.pages.dev"]);
+const DEFAULT_ORIGIN = "https://tonychendds.github.io";
 const SERVER_PBKDF2_ITERATIONS = 100_000;
 const MAX_BODY_BYTES = 1_500_000;
 const MAX_ITEMS = 40;
@@ -62,6 +64,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 const worker = {
   async fetch(request: Request, env: Env): Promise<Response> {
+    const response = await route(request, env);
+    const origin = request.headers.get("Origin");
+    response.headers.set("Access-Control-Allow-Origin", origin && ALLOWED_ORIGINS.has(origin) ? origin : DEFAULT_ORIGIN);
+    return response;
+  },
+};
+
+async function route(request: Request, env: Env): Promise<Response> {
+  {
     if (rejectedOrigin(request)) return cors(json({ error: "Origin is not allowed." }, 403));
     if (request.method === "OPTIONS") return cors(new Response(null, { status: 204 }));
     const url = new URL(request.url);
@@ -76,19 +87,20 @@ const worker = {
     } catch {
       return cors(json({ error: "The sync server could not finish that request." }, 500));
     }
-  },
-};
+  }
+}
+
 
 export default worker;
 
 function rejectedOrigin(request: Request): boolean {
   const origin = request.headers.get("Origin");
-  return !!origin && origin !== ALLOWED_ORIGIN;
+  return !!origin && !ALLOWED_ORIGINS.has(origin);
 }
 
 function cors(response: Response): Response {
   const headers = new Headers(response.headers);
-  headers.set("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
+  headers.set("Access-Control-Allow-Origin", DEFAULT_ORIGIN);
   headers.set("Access-Control-Allow-Methods", "GET, PUT, POST, OPTIONS");
   headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type");
   headers.set("Access-Control-Max-Age", "86400");

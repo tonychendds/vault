@@ -142,13 +142,13 @@ test("repo wiring stays free of secrets and recovery", () => {
   const sql = readFileSync(new URL("worker/migrations/0001_init.sql", root), "utf8");
   assert.equal(/recovery_email|reset-request|password_resets|RESET_RELAY/i.test(worker), false);
   assert.equal(worker.includes("console."), false);
-  assert.match(worker, /ALLOWED_ORIGIN = "https:\/\/tonychendds\.github\.io"/);
+  assert.match(worker, /ALLOWED_ORIGINS = new Set\(\["https:\/\/tonychendds\.github\.io", "https:\/\/tonychen-vault\.pages\.dev"\]\)/);
   assert.match(toml, /name = "vault-sync"/);
   assert.match(toml, /binding = "DB"/);
   assert.match(toml, /database_id = "[0-9a-f-]{36}"/);
   const sw = readFileSync(new URL("docs/app/sw.js", root), "utf8");
   const oldSw = readFileSync(new URL("docs/sw.js", root), "utf8");
-  assert.match(sw, /vault-app-v1/);
+  assert.match(sw, /vault-app-v\d+/);
   assert.match(oldSw, /registration\.unregister/);
   assert.match(oldSw, /caches\.delete/);
   assert.equal(rootHtml.includes("manifest"), false);
