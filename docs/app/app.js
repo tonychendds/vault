@@ -269,7 +269,10 @@ function setMode(mode) {
     button.classList.toggle("active", active);
     button.setAttribute("aria-selected", active ? "true" : "false");
   }
-  document.getElementById("mode-copy").textContent = MODE_COPY[mode];
+  document.getElementById("mode-copy").textContent =
+    mode === "signin" && session.token && session.email
+      ? `Still signed in as ${session.email}. Your master password is never saved, so enter it to unlock.`
+      : MODE_COPY[mode];
   document.getElementById("recovery-warning").hidden = mode === "signin";
   document.getElementById("confirm-label").hidden = mode === "signin";
   confirmInput.disabled = mode === "signin";

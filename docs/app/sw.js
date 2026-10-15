@@ -1,4 +1,4 @@
-const CACHE = "vault-app-v1";
+const CACHE = "vault-app-v2";
 
 const ASSETS = [
   "./",

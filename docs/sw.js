@@ -7,7 +7,7 @@ self.addEventListener("activate", (event) => {
   event.waitUntil(
     (async () => {
       const keys = await caches.keys();
-      await Promise.all(keys.filter((key) => key !== "vault-app-v1").map((key) => caches.delete(key)));
+      await Promise.all(keys.filter((key) => !key.startsWith("vault-app-")).map((key) => caches.delete(key)));
       await self.registration.unregister();
       const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       await Promise.all(windows.map(async (client) => {
